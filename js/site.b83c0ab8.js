@@ -98,7 +98,8 @@
       const p = v.play(); if (p && p.catch) p.catch(() => {});
     } else v.pause();
   }), { threshold: 0.25 });
-  filmes.forEach((v) => { ioPerto.observe(v); ioVer.observe(v); });
+  const soCapa = (v) => v.dataset.filme === "demo-v" && matchMedia("(max-width: 760px)").matches;
+  filmes.forEach((v) => { if (soCapa(v)) { v.poster = v.dataset.poster; v.removeAttribute("loop"); return; } ioPerto.observe(v); ioVer.observe(v); });
   document.addEventListener("visibilitychange", () => { if (document.hidden) [...filmes, hero].forEach((v) => v && v.pause()); });
   
   const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add(e.target.tagName === "SECTION" ? "entrou" : "vista"); io.unobserve(e.target); } }), { rootMargin: "0px 0px -12% 0px" });
@@ -182,9 +183,12 @@
   
   const palco = $(".palco3d");
   const estado = $("[data-p3-estado]");
-  let pedido = false;
+  let pedido = false, ultimoScroll = 0;
+  addEventListener("scroll", () => { ultimoScroll = performance.now(); }, { passive: true });
   const arranca = () => {
-    if (pedido) return; pedido = true;
+    if (pedido) return;
+    if (performance.now() - ultimoScroll < 300) { setTimeout(arranca, 200); return; }
+    pedido = true;
     const vai = () => import("./config3d.js").then((m) => m.iniciar(palco, $("[data-config]"))).catch((err) => {
       console.warn(err); if (estado) { estado.textContent = "3D needs a newer browser. Book a demo to see it live."; }
     });
@@ -192,6 +196,7 @@
   };
   if (palco) {
     const ioP = new IntersectionObserver(([e]) => { if (e.isIntersecting) { arranca(); ioP.disconnect(); } }, { rootMargin: "1400px 0px" });
+    new IntersectionObserver(([e]) => { if (e.isIntersecting) { ultimoScroll = 0; arranca(); } }).observe(palco);
     if (document.readyState === "complete") ioP.observe(palco); else addEventListener("load", () => ioP.observe(palco), { once: true });
   }
   
