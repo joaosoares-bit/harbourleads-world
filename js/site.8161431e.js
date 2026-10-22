@@ -67,14 +67,9 @@
   let gAtual = seg();
   if (gancho) {
     const primeiro = gancho.querySelector(".g");
-    if (gancho.dataset[gAtual] && primeiro.textContent !== gancho.dataset[gAtual]) primeiro.textContent = gancho.dataset[gAtual];
+    if (gancho.dataset[gAtual] && primeiro.textContent.replace(/\s+/g, " ").trim() !== gancho.dataset[gAtual]) primeiro.textContent = gancho.dataset[gAtual];
     primeiro.dataset.g = gAtual; heroSec.dataset.gancho = gAtual;
-    palavras(primeiro);
-    const reserva = () => {
-      let alt = 0;
-      ORDEM.forEach((k) => { const g = frase(k); g.style.cssText = "position:absolute;visibility:hidden;left:0;bottom:0"; gancho.append(g); alt = Math.max(alt, g.getBoundingClientRect().height); g.remove(); });
-      if (alt) gancho.style.setProperty("--gh", `${Math.ceil(alt)}px`);
-    };
+    if (!primeiro.querySelector(".wm")) palavras(primeiro);
     const mede = () => {
       const a = gancho.querySelector(".g.ativo"); if (!a) return;
       const ms = [...a.querySelectorAll(".wm")]; if (!ms.length) return;
@@ -82,9 +77,9 @@
       const dir = Math.max(...ms.filter((m) => m.offsetTop === topo).map((m) => m.offsetLeft + m.offsetWidth));
       gancho.style.setProperty("--gw", `${Math.round(dir)}px`);
     };
-    reserva(); mede();
-    addEventListener("resize", () => { reserva(); mede(); });
-    if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { reserva(); mede(); });
+    mede();
+    addEventListener("resize", mede);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(mede);
     let heroVisivel = true, tGancho = 0;
     const troca = () => {
       if (semMov() || !heroVisivel || document.hidden) { tGancho = setTimeout(troca, 1200); return; }
