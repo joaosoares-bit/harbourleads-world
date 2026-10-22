@@ -126,6 +126,10 @@
     setTimeout(() => { lcp = true; tenta(); }, 2500);
     if (!carregou) addEventListener("load", () => { carregou = true; tenta(); }, { once: true }); else tenta();
     new IntersectionObserver(([e]) => { heroNoEcra = e.isIntersecting; if (!hero.src) return; if (heroNoEcra) tocaHero(); else hero.pause(); }).observe(hero);
+    ["pause", "stalled", "suspend"].forEach((ev) => hero.addEventListener(ev, () => { if (heroNoEcra && !document.hidden) setTimeout(tocaHero, 250); }));
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) tocaHero(); });
+    ["touchstart", "pointerdown", "scroll"].forEach((ev) => addEventListener(ev, tocaHero, { passive: true, once: true }));
+    setInterval(() => { if (hero.src && hero.paused && heroNoEcra && !document.hidden && !semMov()) tocaHero(); }, 1500);
   }
   
   const filmes = $$("video[data-filme]");
