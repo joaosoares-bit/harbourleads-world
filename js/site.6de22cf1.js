@@ -31,33 +31,77 @@
     if (document.readyState === "complete") setTimeout(carregarGa, 1200); else addEventListener("load", () => setTimeout(carregarGa, 1200), { once: true });
   }
   
-  const fimAbertura = () => H.classList.remove("abre");
-  if (H.classList.contains("abre")) {
-    setTimeout(fimAbertura, 3700);
-    ["pointerdown", "keydown", "wheel", "touchstart"].forEach((t) => addEventListener(t, () => setTimeout(fimAbertura, 0), { once: true, passive: true }));
+  const abrindo = H.classList.contains("abre");
+  const T_RASGO = 1620;
+  let rasgou = !abrindo;
+  const fimSinal = "AbortController" in window ? new AbortController() : null;
+  const fimAbertura = () => { if (fimSinal) fimSinal.abort(); H.classList.remove("abre"); rasgou = true; tocaHero(); };
+  if (abrindo) {
+    const voo = () => {
+      const pares = [[".ab-h", ".marca-h", "h"], [".ab-nome", ".marca-nome", "n"]];
+      pares.forEach(([de, para, k]) => {
+        const a = $(de), b = $(para); if (!a || !b) return;
+        const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
+        if (!ra.width || !rb.width) return;
+        a.style.setProperty(`--${k}x`, `${Math.round(rb.left - ra.left)}px`);
+        a.style.setProperty(`--${k}y`, `${Math.round(rb.top - ra.top)}px`);
+        a.style.setProperty(`--${k}s`, (rb.width / ra.width).toFixed(4));
+      });
+    };
+    voo();
+    const op = fimSinal ? { signal: fimSinal.signal } : {};
+    addEventListener("resize", () => fimAbertura(), op);
+    const cc = $(".c-cima");
+    if (cc) cc.addEventListener("animationstart", (e) => { if (e.animationName === "parte-cima") { rasgou = true; tocaHero(); } }, op);
+    setTimeout(() => { rasgou = true; tocaHero(); }, T_RASGO + 400);
+    setTimeout(fimAbertura, 4400);
+    ["pointerdown", "keydown", "wheel", "touchstart"].forEach((t) => addEventListener(t, () => setTimeout(fimAbertura, 0), { once: true, passive: true, ...op }));
   }
   
   const TIPO = { yard: "Shipyard", broker: "Broker", charter: "Charter fleet" };
-  function aplicarSeg(s, doUtilizador) {
-    H.dataset.seg = s;
-    $$(".segmento [data-seg]").forEach((b) => { const on = b.dataset.seg === s; b.setAttribute("aria-checked", String(on)); b.tabIndex = on ? 0 : -1; });
-    const li = $(".titulo .li[data-txt-yard]");
-    if (li) {
-      const novo = li.dataset["txt" + s[0].toUpperCase() + s.slice(1)];
-      if (novo && li.textContent !== novo) { li.textContent = novo; if (doUtilizador && !semMov()) { li.classList.remove("troca"); void li.offsetWidth; li.classList.add("troca"); } }
-    }
-    const tipo = $("[data-campo-tipo]"); if (tipo) tipo.value = TIPO[s];
-    if (doUtilizador) { guardar("hl-seg", s); evento("segment_chosen", { segment_choice: s }); }
+  const ORDEM = ["yard", "broker", "charter"];
+  const tipo = $("[data-campo-tipo]"); if (tipo && TIPO[seg()]) tipo.value = TIPO[seg()];
+  const heroSec = $(".hero"), gancho = $(".gancho"), cartao = $(".pedido-voa");
+  const palavras = (el) => { const t = el.textContent.trim().split(/\s+/); el.textContent = ""; t.forEach((w, i) => { const m = document.createElement("span"); m.className = "wm"; const sp = document.createElement("span"); sp.className = "w"; sp.style.setProperty("--i", i); sp.textContent = w; m.append(sp); el.append(m, i < t.length - 1 ? " " : ""); }); };
+  const frase = (k) => { const g = document.createElement("span"); g.className = "li g"; g.dataset.g = k; g.textContent = gancho.dataset[k]; palavras(g); return g; };
+  let gAtual = seg();
+  if (gancho) {
+    const primeiro = gancho.querySelector(".g");
+    if (gancho.dataset[gAtual] && primeiro.textContent !== gancho.dataset[gAtual]) primeiro.textContent = gancho.dataset[gAtual];
+    primeiro.dataset.g = gAtual; heroSec.dataset.gancho = gAtual;
+    palavras(primeiro);
+    const reserva = () => {
+      let alt = 0;
+      ORDEM.forEach((k) => { const g = frase(k); g.style.cssText = "position:absolute;visibility:hidden;left:0;bottom:0"; gancho.append(g); alt = Math.max(alt, g.getBoundingClientRect().height); g.remove(); });
+      if (alt) gancho.style.setProperty("--gh", `${Math.ceil(alt)}px`);
+    };
+    const mede = () => {
+      const a = gancho.querySelector(".g.ativo"); if (!a) return;
+      const ms = [...a.querySelectorAll(".wm")]; if (!ms.length) return;
+      const topo = Math.max(...ms.map((m) => m.offsetTop));
+      const dir = Math.max(...ms.filter((m) => m.offsetTop === topo).map((m) => m.offsetLeft + m.offsetWidth));
+      gancho.style.setProperty("--gw", `${Math.round(dir)}px`);
+    };
+    reserva(); mede();
+    addEventListener("resize", () => { reserva(); mede(); });
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { reserva(); mede(); });
+    let heroVisivel = true, tGancho = 0;
+    const troca = () => {
+      if (semMov() || !heroVisivel || document.hidden) { tGancho = setTimeout(troca, 1200); return; }
+      const atual = gancho.querySelector(".g.ativo"), prox = ORDEM[(ORDEM.indexOf(gAtual) + 1) % 3];
+      const novo = frase(prox);
+      gancho.append(novo); void novo.offsetWidth;
+      atual.classList.remove("ativo"); atual.classList.add("sai");
+      novo.classList.add("ativo");
+      setTimeout(() => atual.remove(), 1000);
+      gAtual = prox;
+      mede(); gancho.classList.remove("troca"); void gancho.offsetWidth; gancho.classList.add("troca");
+      setTimeout(() => { heroSec.dataset.gancho = prox; if (cartao) { cartao.classList.remove("salta"); void cartao.offsetWidth; cartao.classList.add("salta"); } }, 620);
+      tGancho = setTimeout(troca, 3800);
+    };
+    new IntersectionObserver(([e]) => { heroVisivel = e.isIntersecting; }, { threshold: 0.3 }).observe(heroSec);
+    tGancho = setTimeout(troca, abrindo ? 6200 : 3800);
   }
-  $$(".segmento [data-seg]").forEach((b) => b.addEventListener("click", () => { if (seg() !== b.dataset.seg) aplicarSeg(b.dataset.seg, true); }));
-  const grupo = $(".segmento");
-  if (grupo) grupo.addEventListener("keydown", (e) => {
-    const ordem = ["yard", "broker", "charter"];
-    const d = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
-    if (!d) return;
-    e.preventDefault(); const s = ordem[(ordem.indexOf(seg()) + d + 3) % 3]; aplicarSeg(s, true); $(`.segmento [data-seg="${s}"]`).focus();
-  });
-  aplicarSeg(seg(), false);
   
   const topo = $(".topo");
   const pinta = () => topo.classList.toggle("solido", scrollY > 40);
@@ -67,20 +111,26 @@
   const vertical = () => matchMedia("(max-width: 760px)").matches;
   const fonteHero = () => {
     if (vertical()) return "filmes/hero-v.mp4";
+    const c = navigator.connection || {};
+    if (c.saveData || (c.effectiveType && c.effectiveType !== "4g")) return "filmes/hero-720.mp4";
     const px = innerWidth * Math.min(devicePixelRatio || 1, 2);
-    return px > 2600 ? "filmes/hero-2160.mp4" : px > 1400 ? "filmes/hero-1080.mp4" : "filmes/hero-720.mp4";
+    return px > 3200 ? "filmes/hero-2160.mp4" : px > 1400 ? "filmes/hero-1080.mp4" : "filmes/hero-720.mp4";
   };
+  let heroNoEcra = true;
+  function tocaHero() {
+    if (!hero || !hero.src || !heroNoEcra || semMov() || document.hidden) return;
+    const p = hero.play(); if (p && p.catch) p.catch(() => {});
+  }
   if (hero) {
-    hero.poster = vertical() ? "filmes/hero-v-480.webp" : "filmes/hero-1080.webp";
     let lcp = !("PerformanceObserver" in window), carregou = document.readyState === "complete";
     const tenta = () => {
       if (!lcp || !carregou || hero.src || semMov()) return;
-      requestAnimationFrame(() => requestAnimationFrame(() => { hero.src = fonteHero(); const p = hero.play(); if (p && p.catch) p.catch(() => {}); }));
+      requestAnimationFrame(() => requestAnimationFrame(() => { hero.src = fonteHero(); hero.preload = "auto"; tocaHero(); }));
     };
     try { new PerformanceObserver((l) => { if (l.getEntries().length) { lcp = true; tenta(); } }).observe({ type: "largest-contentful-paint", buffered: true }); } catch (e) { lcp = true; }
     setTimeout(() => { lcp = true; tenta(); }, 2500);
     if (!carregou) addEventListener("load", () => { carregou = true; tenta(); }, { once: true }); else tenta();
-    new IntersectionObserver(([e]) => { if (!hero.src) return; if (e.isIntersecting && !semMov() && !document.hidden) hero.play().catch(() => {}); else hero.pause(); }).observe(hero);
+    new IntersectionObserver(([e]) => { heroNoEcra = e.isIntersecting; if (!hero.src) return; if (heroNoEcra) tocaHero(); else hero.pause(); }).observe(hero);
   }
   
   const filmes = $$("video[data-filme]");
@@ -93,12 +143,14 @@
   const ioPerto = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { capa(e.target); ioPerto.unobserve(e.target); } }), { rootMargin: "600px 0px" });
   const ioVer = new IntersectionObserver((es) => es.forEach((e) => {
     const v = e.target;
+    const sl = v.closest(".slide");
+    if (sl && !sl.classList.contains("ativo")) { v.pause(); return; }
     if (e.isIntersecting && !semMov() && !document.hidden) {
       capa(v); if (!v.src) v.src = fonteFilme(v);
       const p = v.play(); if (p && p.catch) p.catch(() => {});
     } else v.pause();
   }), { threshold: 0.25 });
-  const soCapa = (v) => v.dataset.filme === "demo-v" && matchMedia("(max-width: 760px)").matches;
+  const soCapa = (v) => v.dataset.filme === "demo-v";
   filmes.forEach((v) => { if (soCapa(v)) { v.poster = v.dataset.poster; v.removeAttribute("loop"); return; } ioPerto.observe(v); ioVer.observe(v); });
   document.addEventListener("visibilitychange", () => { if (document.hidden) [...filmes, hero].forEach((v) => v && v.pause()); });
   
@@ -106,8 +158,49 @@
   $$(".revela, .h2, .aparelhos, .palco3d, main > section").forEach((el) => {
     if (semMov()) el.classList.add(el.tagName === "SECTION" ? "entrou" : "vista"); else io.observe(el);
   });
-  const ap = $(".aparelhos");
-  if (ap) new IntersectionObserver(([e]) => ap.classList.toggle("vista", e.isIntersecting)).observe(ap);
+  
+  const col = $(".aparelhos-col");
+  if (col) {
+    const DUR = 6400;
+    const navB = $$("[data-ecra]", col);
+    const ecras = $$(".ecra", col);
+    const videoSite = $(".s-site video", col);
+    const legendas = $$(".ecra-legenda [data-leg]", col);
+    let idx = 0, tEcra = 0, visivel = false;
+    const agenda = () => {
+      clearTimeout(tEcra);
+      if (!visivel || semMov() || document.hidden) return;
+      const barra = navB[idx] && navB[idx].querySelector("i");
+      const an = barra && barra.getAnimations ? barra.getAnimations()[0] : null;
+      const resta = an && an.currentTime != null ? Math.max(200, DUR - an.currentTime) : DUR;
+      tEcra = setTimeout(() => mostra(idx + 1), resta);
+    };
+    new IntersectionObserver(([e], ob) => { if (!e.isIntersecting) return; $$("img[data-src]", col).forEach((im) => { im.src = im.dataset.src; im.removeAttribute("data-src"); }); ob.disconnect(); }, { rootMargin: "700px 0px" }).observe(col);
+    function mostra(i, doUtilizador) {
+      const ant = idx; idx = (i + 3) % 3;
+      ecras.forEach((ec) => {
+        [...ec.children].forEach((sl, k) => {
+          sl.classList.remove("sai");
+          if (k === ant && ant !== idx) sl.classList.add("sai");
+          sl.classList.toggle("ativo", k === idx);
+          if (k === idx) { void sl.offsetWidth; }
+        });
+      });
+      legendas.forEach((l, k) => { l.classList.remove("sai"); if (k === ant && ant !== idx) l.classList.add("sai"); l.classList.toggle("ativo", k === idx); l.setAttribute("aria-hidden", String(k !== idx)); });
+      navB.forEach((b, k) => { b.setAttribute("aria-pressed", String(k === idx)); b.classList.remove("enche"); if (k === idx) { void b.offsetWidth; b.classList.add("enche"); } });
+      if (videoSite && videoSite.src) { if (idx === 0 && visivel) videoSite.play().catch(() => {}); else videoSite.pause(); }
+      if (doUtilizador) evento("screens_tab", { screen: ["website", "configurator", "crm"][idx] });
+      agenda();
+    }
+    navB.forEach((b) => b.addEventListener("click", () => mostra(Number(b.dataset.ecra), true)));
+    new IntersectionObserver(([e]) => {
+      visivel = e.isIntersecting;
+      col.classList.toggle("pausa", !visivel);
+      if (visivel) { if (!col.dataset.comecou) { col.dataset.comecou = "1"; mostra(0); } else agenda(); } else clearTimeout(tEcra);
+    }, { threshold: 0.35 }).observe(col);
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) agenda(); else clearTimeout(tEcra); });
+    document.addEventListener("harbour:movimento", agenda);
+  }
   
   const form = $("[data-form]");
   const sobre = $("[data-sobre]");
@@ -139,45 +232,13 @@
       fixo.setAttribute("aria-hidden", String(!mostra)); fixo.tabIndex = mostra ? 0 : -1;
     };
     const ioCta = new IntersectionObserver((es) => { es.forEach((e) => (e.isIntersecting ? vistos.add(e.target) : vistos.delete(e.target))); actualiza(); });
-    $$(".btn, .topo-cta, .form, .opcoes, .rodape-links").forEach((el) => { if (!el.closest(".cta-fixo")) ioCta.observe(el); });
+    $$(".btn, .form, .opcoes, .rodape-links, .ecras-nav").forEach((el) => { if (!el.closest(".cta-fixo")) ioCta.observe(el); });
     const heroSec = $(".hero");
     if (heroSec) new IntersectionObserver(([e]) => { passouHero = !e.isIntersecting; actualiza(); }, { rootMargin: "-40% 0px 0px 0px" }).observe(heroSec);
-  }
-  
-  const colNova = $("[data-col-new]");
-  const conta = $("[data-conta-new]");
-  const kpi = $("[data-kpi-novos]");
-  let relogioFim = 0, relogioEl = null, relogioTimer = 0;
-  const fmt = (ms) => { const s = Math.max(0, Math.round(ms / 1000)); return `${Math.floor(s / 3600)}:${String(Math.floor((s % 3600) / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`; };
-  const tique = () => { if (relogioEl) relogioEl.textContent = `Reply clock ${fmt(relogioFim - Date.now())}`; };
-  function aterra(descricao, origemTxt) {
-    if (!colNova) return;
-    const antigo = colNova.querySelector(".cartao.novo");
-    if (antigo) antigo.classList.remove("novo");
-    const c = document.createElement("div");
-    c.className = "cartao novo";
-    c.innerHTML = `<b>Client A.</b><span></span><span class="relogio-resposta"></span><span class="tags"><em class="t-hot">Hot</em><em class="t-src"></em></span>`;
-    c.children[1].textContent = descricao;
-    c.querySelector(".t-src").textContent = origemTxt;
-    colNova.querySelector("h4").after(c);
-    if (antigo) antigo.remove();
-    const n = colNova.querySelectorAll(".cartao").length;
-    if (conta) conta.textContent = n;
-    if (kpi) kpi.textContent = 18 + (n - 2);
-    relogioEl = c.querySelector(".relogio-resposta"); relogioFim = Date.now() + 2 * 3600 * 1000; tique();
-    clearInterval(relogioTimer); relogioTimer = setInterval(tique, 1000);
-  }
-  const crm = $(".crm");
-  if (crm) {
-    let primeira = true;
-    new IntersectionObserver(([e]) => {
-      if (e.isIntersecting && primeira && !colNova.querySelector(".cartao.novo")) { primeira = false; aterra("Configured in midnight navy, teak deck", "Configurator"); }
-    }, { threshold: 0.3 }).observe(crm);
   }
   document.addEventListener("harbour:build", (e) => {
     buildActual = e.detail.texto;
     const campo = $("[data-campo-build]"); if (campo) campo.value = buildActual;
-    aterra(`Configured: ${e.detail.curto}`, "Configurator");
     evento("configurator_build_sent", { build: buildActual });
   });
   
@@ -229,7 +290,7 @@
       if (ok) {
         estadoF.className = "form-estado ok";
         estadoF.textContent = `Thank you, ${d.name.trim().split(" ")[0]}. We will email you a time for the call.`;
-        form.reset(); aplicarSeg(seg(), false);
+        form.reset(); if (tipo && TIPO[seg()]) tipo.value = TIPO[seg()];
         evento("form_submit", { form_result: "ok", cta_location: d.cta || "" });
       } else {
         const msg = `Hi Harbour Leads, I'd like to book a 15-minute demo. ${d.name} · ${d.company} · ${d.email}${d.website ? " · " + d.website : ""} · ${d.type} · ${d.interest}${d.build ? " · build: " + d.build : ""}`;
@@ -251,7 +312,7 @@
       H.classList.toggle("sem-movimento", liga); H.classList.remove("abre");
       guardar("hl-sem-movimento", liga ? "1" : "0");
       mov.setAttribute("aria-pressed", String(liga));
-      if (liga) { [...filmes, hero].forEach((v) => v && v.pause()); $$(".revela, .h2, .aparelhos, .palco3d").forEach((el) => el.classList.add("vista")); $$("main > section").forEach((s) => s.classList.add("entrou")); }
+      if (liga) { [...filmes, hero].forEach((v) => v && v.pause()); $$(".revela, .h2, .aparelhos, .palco3d").forEach((el) => el.classList.add("vista")); H.classList.remove("abre"); $$("main > section").forEach((s) => s.classList.add("entrou")); }
       document.dispatchEvent(new CustomEvent("harbour:movimento", { detail: { sem: liga } }));
     });
   }
