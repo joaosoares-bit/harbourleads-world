@@ -7,6 +7,23 @@
   const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
   const ler = (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } };
   H.classList.add("pronto");
+  const TX = {
+    en: { sem3d: "3D needs a newer browser. Book a demo to see it live.", sobreBuild: (b) => `About: a configurator like this · your build: ${b}`, sobre: (a) => `About: ${a}`,
+      falta: "Please fill in your name, work email and company.", aEnviar: "Sending…", obrigado: (n) => `Thank you, ${n}. We will email you a time for the call.`,
+      msg: "Hi Harbour Leads, I'd like to book a 15-minute demo.", build: "build", assunto: "15-minute demo", porWa: "Send it on WhatsApp", porEmail: "Send it by email",
+      ocupado: "Our form is busy right now. One tap sends the same request: ", ensaio: "This preview is not connected yet, so nothing was sent.", falhou: "We could not send it right now. Please try again in a minute.",
+      ola: ["Morning", "Afternoon", "Evening"], specs: ["8 guests · 4 cabins", "6 guests · 3 cabins", "10 guests · 5 cabins"] },
+    es: { sem3d: "El 3D necesita un navegador más reciente. Reserve una demo para verlo en directo.", sobreBuild: (b) => `Sobre: un configurador como este · su yate: ${b}`, sobre: (a) => `Sobre: ${a}`,
+      falta: "Indique su nombre, su email profesional y su empresa.", aEnviar: "Enviando…", obrigado: (n) => `Gracias, ${n}. Le enviaremos por email una hora para la llamada.`,
+      msg: "Hola Harbour Leads, me gustaría reservar una demo de 15 minutos.", build: "yate", assunto: "Demo de 15 minutos", porWa: "Enviar por WhatsApp", porEmail: "Enviar por email",
+      ocupado: "Nuestro formulario está ocupado ahora mismo. Un toque envía la misma solicitud: ", ensaio: "Esta vista previa aún no está conectada, así que no se ha enviado nada.", falhou: "No hemos podido enviarlo ahora. Inténtelo de nuevo en un minuto.",
+      ola: ["Buenos días", "Buenas tardes", "Buenas noches"], specs: ["8 huéspedes · 4 camarotes", "6 huéspedes · 3 camarotes", "10 huéspedes · 5 camarotes"] },
+    fr: { sem3d: "La 3D demande un navigateur plus récent. Réservez une démo pour la voir en direct.", sobreBuild: (b) => `Objet : un configurateur comme celui-ci · votre yacht : ${b}`, sobre: (a) => `Objet : ${a}`,
+      falta: "Indiquez votre nom, votre email professionnel et votre société.", aEnviar: "Envoi…", obrigado: (n) => `Merci, ${n}. Nous vous enverrons par email un créneau pour l'appel.`,
+      msg: "Bonjour Harbour Leads, je souhaite réserver une démo de 15 minutes.", build: "yacht", assunto: "Démo de 15 minutes", porWa: "Envoyer sur WhatsApp", porEmail: "Envoyer par email",
+      ocupado: "Notre formulaire est saturé pour le moment. Un clic envoie la même demande : ", ensaio: "Cet aperçu n'est pas encore connecté, rien n'a été envoyé.", falhou: "L'envoi n'a pas abouti. Réessayez dans une minute.",
+      ola: ["Bonjour", "Bon après-midi", "Bonsoir"], specs: ["8 invités · 4 cabines", "6 invités · 3 cabines", "10 invités · 5 cabines"] },
+  }[["es", "fr"].find((l) => (H.lang || "").startsWith(l)) || "en"];
   let CFG = {};
   try { CFG = JSON.parse($("#cfg").textContent) || {}; } catch (e) {}
   
@@ -80,6 +97,7 @@
     mede();
     addEventListener("resize", mede);
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(mede);
+    if (document.fonts && document.fonts.addEventListener) document.fonts.addEventListener("loadingdone", mede); // as letras chegam depois do logótipo
     let heroVisivel = true, tGancho = 0;
     const troca = () => {
       if (semMov() || !heroVisivel || document.hidden) { tGancho = setTimeout(troca, 1200); return; }
@@ -105,11 +123,11 @@
   const hero = $("[data-hero]");
   const vertical = () => matchMedia("(max-width: 760px)").matches;
   const fonteHero = () => {
-    if (vertical()) return "filmes/hero-v.mp4";
+    if (vertical()) return "/filmes/hero-v.mp4";
     const c = navigator.connection || {};
-    if (c.saveData || (c.effectiveType && c.effectiveType !== "4g")) return "filmes/hero-720.mp4";
+    if (c.saveData || (c.effectiveType && c.effectiveType !== "4g")) return "/filmes/hero-720.mp4";
     const px = innerWidth * Math.min(devicePixelRatio || 1, 2);
-    return px > 3200 ? "filmes/hero-2160.mp4" : px > 1400 ? "filmes/hero-1080.mp4" : "filmes/hero-720.mp4";
+    return px > 3200 ? "/filmes/hero-2160.mp4" : px > 1400 ? "/filmes/hero-1080.mp4" : "/filmes/hero-720.mp4";
   };
   let heroNoEcra = true;
   function tocaHero() {
@@ -120,7 +138,8 @@
     let lcp = !("PerformanceObserver" in window), carregou = document.readyState === "complete";
     const tenta = () => {
       if (!lcp || !carregou || hero.src || semMov()) return;
-      requestAnimationFrame(() => requestAnimationFrame(() => { hero.src = fonteHero(); hero.preload = "auto"; tocaHero(); }));
+      const pede = () => { if (hero.src) return; hero.src = fonteHero(); hero.preload = "auto"; tocaHero(); };
+      if (abrindo) setTimeout(pede, 800); else requestAnimationFrame(() => requestAnimationFrame(pede));
     };
     try { new PerformanceObserver((l) => { if (l.getEntries().length) { lcp = true; tenta(); } }).observe({ type: "largest-contentful-paint", buffered: true }); } catch (e) { lcp = true; }
     setTimeout(() => { lcp = true; tenta(); }, 2500);
@@ -134,9 +153,9 @@
   
   const filmes = $$("video[data-filme]");
   const fonteFilme = (v) => {
-    if (v.dataset.filme === "demo-v") return "filmes/demo-v.mp4";
+    if (v.dataset.filme === "demo-v") return "/filmes/demo-v.mp4";
     const px = v.getBoundingClientRect().width * Math.min(devicePixelRatio || 1, 2);
-    return px > 1000 ? "filmes/demo-1440.mp4" : "filmes/demo-960.mp4";
+    return px > 1000 ? "/filmes/demo-1440.mp4" : "/filmes/demo-960.mp4";
   };
   const capa = (v) => { if (v.dataset.poster && !v.poster) v.poster = v.dataset.poster; };
   const ioPerto = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { capa(e.target); ioPerto.unobserve(e.target); } }), { rootMargin: "600px 0px" });
@@ -150,7 +169,7 @@
     } else v.pause();
   }), { threshold: 0.25 });
   const soCapa = (v) => v.dataset.filme === "demo-v";
-  filmes.forEach((v) => { if (soCapa(v)) { v.poster = v.dataset.poster; v.removeAttribute("loop"); return; } ioPerto.observe(v); ioVer.observe(v); });
+  filmes.forEach((v) => { if (soCapa(v)) { v.removeAttribute("loop"); ioPerto.observe(v); return; } ioPerto.observe(v); ioVer.observe(v); });
   document.addEventListener("visibilitychange", () => { if (document.hidden) [...filmes, hero].forEach((v) => v && v.pause()); });
   
   const io = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add(e.target.tagName === "SECTION" ? "entrou" : "vista"); io.unobserve(e.target); } }), { rootMargin: "0px 0px -12% 0px" });
@@ -201,6 +220,59 @@
     document.addEventListener("harbour:movimento", agenda);
   }
   
+  const apps = $(".apps");
+  if (apps) {
+    const tels = $("[data-apps]", apps);
+    const IATES = [["Aurora 52", "img/cfg/iate-navy.webp"], ["Vela 44", "img/cfg/iate-pearl.webp"], ["Polar 60", "img/cfg/iate-champagne.webp"]];
+    const base = ($("img.ta-iate", apps).dataset.src || "").replace(/img\/cfg\/.*$/, "");
+    let iate = 0, mexeu = false, tDemo = [];
+    const relogio = () => {
+      const d = new Date(), h = d.getHours();
+      $$("[data-hora]", apps).forEach((el) => { el.textContent = `${String(h).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; });
+      const eq = $("[data-ola-equipa]", apps); if (eq) eq.textContent = `${TX.ola[h < 12 ? 0 : h < 19 ? 1 : 2]}, Marina`;
+    };
+    const escolhe = (grupo, botao) => $$("button", grupo).forEach((b) => { b.classList.toggle("ativo", b === botao); b.setAttribute("aria-pressed", String(b === botao)); });
+    const mudaIate = (i) => {
+      iate = i; const img = $(".ta-iate", apps);
+      escolhe($(".t-tabs", apps), $(`[data-iate="${i}"]`, apps));
+      $("[data-iate-nome]", apps).textContent = IATES[i][0]; $("[data-iate-specs]", apps).textContent = TX.specs[i];
+      $(".tel-b .t-ola", apps).textContent = IATES[i][0];
+      if (img.getAttribute("src")) { img.classList.add("troca"); setTimeout(() => { img.onload = () => img.classList.remove("troca"); img.src = base + IATES[i][1]; }, 250); }
+      else img.dataset.src = base + IATES[i][1];
+    };
+    const pede = () => {
+      const dia = $("[data-dia].ativo", apps), dest = $("[data-destino].ativo", apps), lista = $("[data-apps-lista]", apps);
+      const quando = `${dia.querySelector("small").textContent} ${dia.lastChild.textContent.trim()} ${$(".tb-mes", apps).textContent}`;
+      const li = document.createElement("li"); li.className = "nova";
+      li.innerHTML = `<span><b></b><small></small></span><i class="tc-int"></i>`;
+      li.querySelector("b").textContent = `Sofia · ${IATES[iate][0]}`; li.querySelector("small").textContent = `${quando} · ${dest.textContent}`;
+      $$("li.nova", lista).forEach((x) => x.classList.remove("nova"));
+      lista.prepend(li);
+      while (lista.children.length > 3) lista.removeChild(lista.lastElementChild);
+      const hoje = $("[data-hoje]", apps); hoje.style.setProperty("--v", Math.min(.95, parseFloat(getComputedStyle(hoje).getPropertyValue("--v")) + .14));
+      const t = $("[data-apps-toast]", apps); t.classList.add("ve"); setTimeout(() => t.classList.remove("ve"), 2600);
+      setTimeout(() => { const i = li.querySelector(".tc-int"); if (i) i.classList.add("on"); }, 1400);
+      const r = apps.getBoundingClientRect();
+      if (tels.scrollWidth > tels.clientWidth + 4 && r.top < innerHeight && r.bottom > 0) tels.scrollTo({ left: $(".tel-c", apps).offsetLeft - tels.offsetLeft - 16, behavior: semMov() ? "auto" : "smooth" });
+      evento("apps_booking_demo", { yacht: IATES[iate][0], destination: dest.textContent });
+    };
+    const parar = () => { mexeu = true; tDemo.forEach(clearTimeout); tDemo = []; };
+    apps.addEventListener("pointerdown", (e) => { if (e.target.closest(".tel")) parar(); });
+    $$("[data-iate]", apps).forEach((b) => b.addEventListener("click", () => mudaIate(Number(b.dataset.iate))));
+    $$("[data-dia]", apps).forEach((b) => b.addEventListener("click", () => escolhe(b.parentElement, b)));
+    $$("[data-destino]", apps).forEach((b) => b.addEventListener("click", () => escolhe(b.parentElement, b)));
+    $("[data-pedir]", apps).addEventListener("click", pede);
+    const demo = () => {
+      if (mexeu || semMov()) return;
+      const passos = [() => mudaIate(1), () => escolhe($(".tb-dias", apps), $$("[data-dia]", apps)[2]), () => escolhe($(".tb-destinos", apps), $$("[data-destino]", apps)[1]),
+        () => { const s = $("[data-pedir]", apps); s.classList.add("carrega"); setTimeout(() => s.classList.remove("carrega"), 260); pede(); }];
+      passos.forEach((f, k) => tDemo.push(setTimeout(() => { if (!mexeu && !document.hidden) f(); }, 2200 + k * 1500)));
+    };
+    new IntersectionObserver(([e], ob) => { if (!e.isIntersecting) return; $$("img[data-src]", apps).forEach((im) => { im.src = im.dataset.src; im.removeAttribute("data-src"); }); ob.disconnect(); }, { rootMargin: "800px 0px" }).observe(apps);
+    new IntersectionObserver(([e], ob) => { if (!e.isIntersecting) return; apps.classList.add("aberta"); relogio(); setInterval(relogio, 30000); ob.disconnect(); setTimeout(demo, 900); }, { threshold: 0.3 }).observe(apps);
+    if (semMov()) apps.classList.add("aberta");
+  }
+  
   const form = $("[data-form]");
   const sobre = $("[data-sobre]");
   let buildActual = "";
@@ -214,7 +286,7 @@
       const interesse = $("[data-campo-interesse]");
       if (about && interesse && [...interesse.options].some((o) => o.text === about)) interesse.value = about;
       if (sobre) {
-        const txt = onde === "configurator" && buildActual ? `About: a configurator like this · your build: ${buildActual}` : about ? `About: ${about}` : "";
+        const txt = onde === "configurator" && buildActual ? TX.sobreBuild(buildActual) : about ? TX.sobre(about) : "";
         sobre.textContent = txt; sobre.hidden = !txt;
       }
     }
@@ -250,7 +322,7 @@
     if (performance.now() - ultimoScroll < 300) { setTimeout(arranca, 200); return; }
     pedido = true;
     const vai = () => import("./config3d.js").then((m) => m.iniciar(palco, $("[data-config]"))).catch((err) => {
-      console.warn(err); if (estado) { estado.textContent = "3D needs a newer browser. Book a demo to see it live."; }
+      console.warn(err); if (estado) { estado.textContent = TX.sem3d; }
     });
     ("requestIdleCallback" in window) ? requestIdleCallback(vai, { timeout: 1500 }) : setTimeout(vai, 200);
   };
@@ -273,11 +345,11 @@
         el.setAttribute("aria-invalid", String(mau));
         if (mau && !primeiroErro) primeiroErro = el;
       });
-      if (primeiroErro) { estadoF.className = "form-estado erro"; estadoF.textContent = "Please fill in your name, work email and company."; primeiroErro.focus(); return; }
+      if (primeiroErro) { estadoF.className = "form-estado erro"; estadoF.textContent = TX.falta; primeiroErro.focus(); return; }
       const corpo = { ...d, segment: seg(), origem, pagina: location.pathname, quando: new Date().toISOString() };
       delete corpo.site_url;
       const botao = form.querySelector("button[type=submit]");
-      botao.disabled = true; estadoF.className = "form-estado"; estadoF.textContent = "Sending…";
+      botao.disabled = true; estadoF.className = "form-estado"; estadoF.textContent = TX.aEnviar;
       let ok = false;
       if (CFG.form) {
         try {
@@ -288,15 +360,15 @@
       botao.disabled = false;
       if (ok) {
         estadoF.className = "form-estado ok";
-        estadoF.textContent = `Thank you, ${d.name.trim().split(" ")[0]}. We will email you a time for the call.`;
+        estadoF.textContent = TX.obrigado(d.name.trim().split(" ")[0]);
         form.reset(); if (tipo && TIPO[seg()]) tipo.value = TIPO[seg()];
         evento("form_submit", { form_result: "ok", cta_location: d.cta || "" });
       } else {
-        const msg = `Hi Harbour Leads, I'd like to book a 15-minute demo. ${d.name} · ${d.company} · ${d.email}${d.website ? " · " + d.website : ""} · ${d.type} · ${d.interest}${d.build ? " · build: " + d.build : ""}`;
+        const msg = `${TX.msg} ${d.name} · ${d.company} · ${d.email}${d.website ? " · " + d.website : ""} · ${d.type} · ${d.interest}${d.build ? ` · ${TX.build}: ` + d.build : ""}`;
         const wa = String(CFG.whatsapp || "").replace(/\D/g, "");
-        const alt = wa ? { href: `https://wa.me/${wa}?text=${encodeURIComponent(msg)}`, txt: "Send it on WhatsApp" } : CFG.email ? { href: `mailto:${CFG.email}?subject=${encodeURIComponent("15-minute demo")}&body=${encodeURIComponent(msg)}`, txt: "Send it by email" } : null;
+        const alt = wa ? { href: `https://wa.me/${wa}?text=${encodeURIComponent(msg)}`, txt: TX.porWa } : CFG.email ? { href: `mailto:${CFG.email}?subject=${encodeURIComponent(TX.assunto)}&body=${encodeURIComponent(msg)}`, txt: TX.porEmail } : null;
         estadoF.className = "form-estado erro";
-        estadoF.textContent = alt ? "Our form is busy right now. One tap sends the same request: " : !CFG.form ? "This preview is not connected yet, so nothing was sent." : "We could not send it right now. Please try again in a minute.";
+        estadoF.textContent = alt ? TX.ocupado : !CFG.form ? TX.ensaio : TX.falhou;
         if (alt) { const a = document.createElement("a"); a.href = alt.href; a.textContent = alt.txt; a.dataset.cta = "form-fallback"; if (wa) { a.target = "_blank"; a.rel = "noopener"; } estadoF.appendChild(a); }
         evento("form_error", { cta_location: d.cta || "", fallback: alt ? (wa ? "whatsapp" : "email") : "none" });
       }

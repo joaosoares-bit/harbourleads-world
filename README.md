@@ -1,3 +1,3 @@
-# Harbour Leads · pré-visualização
+# Harbour Leads · prévia
 
-Só o site construído (pré-visualização com noindex). O código-fonte está no repositório privado.
+Só o build, sem código-fonte. Escondido do Google. O site oficial é harbourleads.eu.

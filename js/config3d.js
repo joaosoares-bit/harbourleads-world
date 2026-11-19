@@ -12,13 +12,33 @@ const CORES = {
   deck: { teak: ["#A0703F", "#2B1D12"], grey: ["#8D8C86", "#3A3A38"], ivory: ["#E3DCCB", "#BDB4A0"] },
   top: { white: "#F4F2EC", black: "#1A1C20" },
 };
+// o resumo do iate segue a língua da página (/es/ e /fr/ desde 6/11/2026); curto = a cor do casco sem a palavra «casco»
 const NOMES = {
-  hull: { pearl: "Pearl white hull", navy: "Midnight navy hull", graphite: "Graphite hull", champagne: "Champagne hull" },
-  stripe: { gold: "gold stripe", silver: "silver stripe", black: "black stripe", red: "regatta red stripe" },
-  deck: { teak: "teak deck", grey: "grey teak deck", ivory: "ivory deck" },
-  top: { white: "white hardtop", black: "black hardtop" },
-  scene: { studio: "studio", sunset: "sunset", night: "night" },
-};
+  en: {
+    hull: { pearl: "Pearl white hull", navy: "Midnight navy hull", graphite: "Graphite hull", champagne: "Champagne hull" },
+    curto: { pearl: "Pearl white", navy: "Midnight navy", graphite: "Graphite", champagne: "Champagne" },
+    stripe: { gold: "gold stripe", silver: "silver stripe", black: "black stripe", red: "regatta red stripe" },
+    deck: { teak: "teak deck", grey: "grey teak deck", ivory: "ivory deck" },
+    top: { white: "white hardtop", black: "black hardtop" },
+    scene: { studio: "studio", sunset: "sunset", night: "night" },
+  },
+  es: {
+    hull: { pearl: "Casco blanco perla", navy: "Casco azul medianoche", graphite: "Casco grafito", champagne: "Casco champán" },
+    curto: { pearl: "Blanco perla", navy: "Azul medianoche", graphite: "Grafito", champagne: "Champán" },
+    stripe: { gold: "franja dorada", silver: "franja plateada", black: "franja negra", red: "franja rojo regata" },
+    deck: { teak: "cubierta de teca", grey: "cubierta de teca gris", ivory: "cubierta marfil" },
+    top: { white: "hardtop blanco", black: "hardtop negro" },
+    scene: { studio: "estudio", sunset: "atardecer", night: "noche" },
+  },
+  fr: {
+    hull: { pearl: "Coque blanc nacré", navy: "Coque bleu nuit", graphite: "Coque graphite", champagne: "Coque champagne" },
+    curto: { pearl: "Blanc nacré", navy: "Bleu nuit", graphite: "Graphite", champagne: "Champagne" },
+    stripe: { gold: "liseré or", silver: "liseré argent", black: "liseré noir", red: "liseré rouge régate" },
+    deck: { teak: "pont en teck", grey: "pont en teck gris", ivory: "pont ivoire" },
+    top: { white: "hardtop blanc", black: "hardtop noir" },
+    scene: { studio: "studio", sunset: "coucher de soleil", night: "nuit" },
+  },
+}[["es", "fr"].find((l) => (document.documentElement.lang || "").startsWith(l)) || "en"];
 
 export async function iniciar(palco, form) {
   // o arranque devolve a vez ao browser entre etapas (antes era uma tarefa só de 0,3 a 0,5 s)
@@ -76,7 +96,7 @@ export async function iniciar(palco, form) {
     if (e.scene === "sunset") { sol.color.set(0xFFC48A); sol.intensity = 2.2; sol.position.set(-14, 9, 8); ceu.color.set(0xFFB37A); ceu.groundColor.set(0x3A2A40); renderer.toneMappingExposure = 0.95; cena.environmentIntensity = 0.7; }
     else if (noite) { sol.color.set(0x9DB4FF); sol.intensity = 0.55; sol.position.set(6, 14, -8); ceu.color.set(0x5A78B8); ceu.groundColor.set(0x0A0F1C); renderer.toneMappingExposure = 0.8; cena.environmentIntensity = 0.35; }
     else { sol.color.set(0xffffff); sol.intensity = 1.6; sol.position.set(9, 16, 11); ceu.color.set(0xffffff); ceu.groundColor.set(0x445066); renderer.toneMappingExposure = 1.0; cena.environmentIntensity = 1; }
-    const curto = `${NOMES.hull[e.hull].replace(" hull", "")}, ${NOMES.deck[e.deck]}`;
+    const curto = `${NOMES.curto[e.hull]}, ${NOMES.deck[e.deck]}`;
     const texto = `${NOMES.hull[e.hull]} · ${NOMES.stripe[e.stripe]} · ${NOMES.deck[e.deck]} · ${NOMES.top[e.top]}`;
     const res = form.querySelector("[data-resumo]"); if (res) res.textContent = texto;
     renderer.shadowMap.needsUpdate = true;
