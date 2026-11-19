@@ -87,9 +87,9 @@
       setTimeout(function () {
         html.classList.remove("dx-abre"); entrada.remove();
         setTimeout(function () { if (window.__dxFilme) window.__dxFilme(); }, 450);
-      }, 820);
+      }, 700);
     };
-    setTimeout(fim, 1850); setTimeout(fim, 4000);
+    setTimeout(fim, 1600); setTimeout(fim, 3500);
     window.addEventListener("pointerdown", fim, { once: true });
     window.addEventListener("keydown", fim, { once: true });
   } else if (entrada) { entrada.remove(); }
